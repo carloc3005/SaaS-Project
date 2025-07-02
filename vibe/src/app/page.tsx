@@ -1,16 +1,17 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
-import { prisma } from "@/lib/db";
 
 
 const Page = async () => {
-    const users = await prisma.user.findMany();
-
 
     return (
-        <div>
-            {JSON.stringify(users, null, 2)}
+        <div className="p-4 max-w-8xl mx-auto">
+            <Button>
+                Invoke Background Job
+            </Button>
         </div>
-    )
+    );
 }
 
 export default Page;
