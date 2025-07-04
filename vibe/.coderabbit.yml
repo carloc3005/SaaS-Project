@@ -1,0 +1,31 @@
+# CodeRabbit configuration
+reviews:
+  # Enable automatic reviews on pull requests
+  auto_review: true
+  
+  # Review patterns
+  path_filters:
+    - "src/**"
+    - "**/*.ts"
+    - "**/*.tsx"
+    - "**/*.js"
+    - "**/*.jsx"
+  
+  # Ignore patterns
+  ignore_patterns:
+    - "node_modules/**"
+    - "dist/**"
+    - "build/**"
+    - "*.min.js"
+  
+  # Review settings
+  settings:
+    # Post review comments as suggestions
+    suggestion_mode: true
+    
+    # Review focus areas
+    focus_areas:
+      - "security"
+      - "performance"
+      - "maintainability"
+      - "best_practices"
