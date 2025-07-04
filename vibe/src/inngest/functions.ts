@@ -3,6 +3,7 @@ import { Sandbox } from "e2b";
 import { inngest } from "./client";
 import { getSandbox } from "./utils";
 import { z } from "zod";
+import { PROMPT } from "@/prompt";
 
 
 
@@ -17,9 +18,14 @@ export const helloWorld = inngest.createFunction(
 
 
     const codeAgent = createAgent({
-      name: "summarizer",
-      system: "You are an expert next.js developer.  You write readable, maintainable code. You write simple Next.js & React snippets.",
-      model: openai({ model: "gpt-4o" }),
+      name: "code-agent",
+      description: "An expert coding agent",
+      system: PROMPT,
+      model: openai({ model: "gpt-4.1",
+        defaultParameters: {
+          temperature: 0.1,
+        }
+       }),
       tools: [
         createTool({
           name: "terminal",
@@ -95,11 +101,6 @@ export const helloWorld = inngest.createFunction(
 
 
             });
-
-             if (typeof newFiles === "object") {
-              network.state.data.files = newFiles;
-             }
-
           }
         }),
 
@@ -113,13 +114,14 @@ export const helloWorld = inngest.createFunction(
             return await step?.run("readFiles", async () => {
               try {
                 const sandbox = await getSandbox(sandboxId);
-                const content = [];
+                const contents = [];
                 for (const file of files) {
                   const content = await sandbox.files.read(file);
-                  content.push({ path: file, content });
+                  contents.push({ path: file, content });
                 }
+                return JSON.stringify(contents);
               } catch (e) {
-                
+                return "Error: " + e;
               }
             })
           },
