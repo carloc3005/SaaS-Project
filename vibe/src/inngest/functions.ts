@@ -1,7 +1,7 @@
-import { Agent, openai, createAgent, createTool } from "@inngest/agent-kit";
+import { openai, createAgent, createTool, createNetwork } from "@inngest/agent-kit";
 import { Sandbox } from "e2b";
 import { inngest } from "./client";
-import { getSandbox } from "./utils";
+import { getSandbox, lastAssistantTextMessageContent } from "./utils";
 import { z } from "zod";
 import { PROMPT } from "@/prompt";
 
@@ -11,6 +11,10 @@ export const helloWorld = inngest.createFunction(
   { id: "hello-world" },
   { event: "test/hello.world" },
   async ({ event, step }) => {
+    // Lifecycle: Function start
+    console.log(`Starting helloWorld function with event: ${event.name}`);
+    console.log(`Event data:`, event.data);
+
     const sandboxId = await step.run("get-sandboxid", async () => {
       const sandbox = await Sandbox.create("q08bq4s7db512qyjgc3h");
       return sandbox.sandboxId;
@@ -21,7 +25,7 @@ export const helloWorld = inngest.createFunction(
       name: "code-agent",
       description: "An expert coding agent",
       system: PROMPT,
-      model: openai({ model: "gpt-4.1",
+      model: openai({ model: "gpt-4o",
         defaultParameters: {
           temperature: 0.1,
         }
@@ -125,16 +129,63 @@ export const helloWorld = inngest.createFunction(
               }
             })
           },
+        }),
+
+        createTool({
+          name: "lastAssistantTextMessageContent",
+          description: "Get the last assistant text message content from an agent result",
+          parameters: z.object({
+            result: z.any() // AgentResult type
+          }),
+          handler: async ({ result }, { step }) => {
+            return await step?.run("lastAssistantTextMessageContent", async () => {
+              try {
+                const lastContent = lastAssistantTextMessageContent(result);
+                return lastContent || "No assistant text message found";
+              } catch (e) {
+                return "Error: " + e;
+              }
+            })
+          },
         })
-      ]
+      ],
+
+      lifecycle: {
+        onResponse: async ({ result, network }) => {
+          // Extract the output from the agent result
+          const output = result.output;
+
+          if (output && network) {
+            // Convert output to string if it's not already
+            const outputString = typeof output === 'string' ? output : JSON.stringify(output);
+            
+            if (outputString.includes("<task_summary")) {
+              // Handle task summary logic here
+            }
+          }
+
+          return result;
+        }
+      }
     });
 
-    const output = await step.run("summarize-text", async () => {
-      const { output } = await codeAgent.run(
-        `Write the following snippets: ${event.data.value}`,
-      );
-      return output;
-    });
+    const network = createNetwork({
+      name: "coding-agent-network",
+      agents: [codeAgent],
+      maxIter: 15,
+      router: async ({network}) => {
+        const summary = network.state.data.summary;
+
+        if (summary) {
+          return;
+        }
+
+        return codeAgent;
+      }
+    })
+
+    const result = await network.run(event.data.value);
+
 
     const sandboxUrl = await step.run("get-sandbox-url", async () => {
       const sandbox = await getSandbox(sandboxId);
@@ -142,6 +193,13 @@ export const helloWorld = inngest.createFunction(
       return `https://${host}`;
     })
 
-    return { output, sandboxUrl };
+
+
+    return { 
+      url: sandboxUrl,
+      title: "Fragment",
+      files: result.state.data.files,
+      summary: result.state.data.summary 
+    };
   },
 );
