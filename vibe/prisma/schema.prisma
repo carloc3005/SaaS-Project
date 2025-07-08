@@ -29,3 +29,16 @@ model Post {
   authorId  Int
   author    User    @relation(fields: [authorId], references: [id])
 }
+
+model AgentResult {
+  id        String   @id @default(cuid())
+  eventId   String   @unique
+  url       String?
+  title     String?
+  files     Json?
+  summary   String?
+  prompt    String
+  status    String   @default("pending") // pending, completed, failed
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
